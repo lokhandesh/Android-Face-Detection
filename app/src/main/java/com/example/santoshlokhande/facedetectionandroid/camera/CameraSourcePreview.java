@@ -30,7 +30,7 @@ import java.io.IOException;
 
 public class CameraSourcePreview extends ViewGroup {
 
-    
+
     private SurfaceView mSurfaceView;
     private boolean mStartRequested;
     private boolean mSurfaceAvailable;
