@@ -1,18 +1,3 @@
-/*
- * Copyright (C) The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.example.santoshlokhande.facedetectionandroid.activity;
 
 import android.Manifest;
@@ -35,6 +20,7 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+
 import com.example.santoshlokhande.facedetectionandroid.R;
 import com.example.santoshlokhande.facedetectionandroid.camera.CameraSourcePreview;
 import com.example.santoshlokhande.facedetectionandroid.camera.FaceGraphic;
@@ -43,19 +29,23 @@ import com.example.santoshlokhande.facedetectionandroid.camera.Utility;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.vision.CameraSource;
-import com.google.android.gms.vision.Detector;
 import com.google.android.gms.vision.MultiProcessor;
 import com.google.android.gms.vision.Tracker;
 import com.google.android.gms.vision.face.Face;
 import com.google.android.gms.vision.face.FaceDetector;
 import com.google.android.gms.vision.face.LargestFaceFocusingProcessor;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
 
 /**
- * Activity for the face tracker app.  This app detects faces with the rear facing camera, and draws
- * overlay graphics to indicate the position, size, and ID of each face.
+ * {@link FaceTrackerActivity}This activity is to track a user face
+ * Draw overlay at center of layout.
+ * Capture button is enabled only when user keep proper space between face and device camera.
+ * <p>
+ * Created By Santosh Lokhande
  */
 public final class FaceTrackerActivity extends AppCompatActivity {
     private static final String TAG = "FaceTracker";
@@ -80,7 +70,7 @@ public final class FaceTrackerActivity extends AppCompatActivity {
 
         mPreview = (CameraSourcePreview) findViewById(R.id.preview);
         mGraphicOverlay = (GraphicOverlay) findViewById(R.id.faceOverlay);
-        button_capture=(Button)findViewById(R.id.btnCapture);
+        button_capture = (Button) findViewById(R.id.btnCapture);
 
         // Check for the camera permission before accessing the camera.  If the
         // permission is not granted yet, request permission.
@@ -98,7 +88,7 @@ public final class FaceTrackerActivity extends AppCompatActivity {
                     @Override
                     public void onPictureTaken(byte[] data) {
                         System.gc();
-                        BitmapWorkerTask task = new BitmapWorkerTask(data);
+                        BitmapWorkerAsyncTask task = new BitmapWorkerAsyncTask(data);
                         task.execute(0);
 
                     }
@@ -108,15 +98,13 @@ public final class FaceTrackerActivity extends AppCompatActivity {
 
     }
 
-    class BitmapWorkerTask extends AsyncTask<Integer, Void, Bitmap> {
-        private final WeakReference<byte[]> dataf;
+    class BitmapWorkerAsyncTask extends AsyncTask<Integer, Void, Bitmap> {
+        private WeakReference<byte[]> dataf;
         private int data = 0;
         private byte[] imageBitmap;
 
-        public BitmapWorkerTask(byte[] imgdata) {
-            // Use a WeakReference to ensure the ImageView can be garbage
-            // collected
-            imageBitmap=imgdata;
+        public BitmapWorkerAsyncTask(byte[] imgdata) {
+            imageBitmap = imgdata;
             dataf = new WeakReference<byte[]>(imgdata);
         }
 
@@ -124,8 +112,17 @@ public final class FaceTrackerActivity extends AppCompatActivity {
         @Override
         protected Bitmap doInBackground(Integer... params) {
             data = params[0];
+
+
+            ByteArrayInputStream arrayInputStream = new ByteArrayInputStream(imageBitmap);
+            Bitmap bitmap = BitmapFactory.decodeStream(arrayInputStream);
+            Bitmap faceBitmap = Bitmap.createBitmap(bitmap, bitmap.getWidth() / 4, bitmap.getHeight() / 4, bitmap.getWidth() / 2, bitmap.getHeight() / 2);
+            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+            faceBitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+            byte[] byteArray = stream.toByteArray();
+
+            dataf = new WeakReference<byte[]>(byteArray);
             ResultActivity(dataf.get());
-         //   Bitmap bitmap = BitmapFactory.decodeByteArray(imageBitmap, 0, imageBitmap.length);
 
             return mainbitmap;
         }
@@ -135,11 +132,9 @@ public final class FaceTrackerActivity extends AppCompatActivity {
         protected void onPostExecute(Bitmap bitmap) {
             if (mainbitmap != null) {
 
-               // mainbitmap=Bitmap.createBitmap(mainbitmap,(int)FaceGraphic.leftFrom,(int)FaceGraphic.topFrom,1,1);
-
-                Intent i = new Intent(FaceTrackerActivity.this,CroppedPictureActiviyt.class);
+                Intent i = new Intent(FaceTrackerActivity.this, CroppedPictureActiviyt.class);
                 i.putExtra("BitmapImage", mainbitmap);
-                startActivity( i);
+                startActivity(i);
 
             }
         }
@@ -150,31 +145,24 @@ public final class FaceTrackerActivity extends AppCompatActivity {
     public void ResultActivity(byte[] data) {
         mainbitmap = null;
         mainbitmap = decodeSampledBitmapFromResource(data, 200, 200);
-        mainbitmap=RotateBitmap(mainbitmap,270);
-        mainbitmap=flip(mainbitmap);
+        mainbitmap = RotateBitmap(mainbitmap, 270);
+        mainbitmap = flip(mainbitmap);
     }
 
     public static Bitmap decodeSampledBitmapFromResource(byte[] data,
                                                          int reqWidth, int reqHeight) {
 
-        // First decode with inJustDecodeBounds=true to check dimensions
         final BitmapFactory.Options options = new BitmapFactory.Options();
         options.inJustDecodeBounds = true;
-        // BitmapFactory.decodeResource(res, resId, options);
         BitmapFactory.decodeByteArray(data, 0, data.length, options);
-
-        // Calculate inSampleSize
         options.inSampleSize = calculateInSampleSize(options, reqWidth,
                 reqHeight);
-
-        // Decode bitmap with inSampleSize set
         options.inJustDecodeBounds = false;
         return BitmapFactory.decodeByteArray(data, 0, data.length, options);
     }
 
     public static int calculateInSampleSize(BitmapFactory.Options options,
                                             int reqWidth, int reqHeight) {
-        // Raw height and width of image
         final int height = options.outHeight;
         final int width = options.outWidth;
         int inSampleSize = 1;
@@ -197,9 +185,7 @@ public final class FaceTrackerActivity extends AppCompatActivity {
                 source.getHeight(), matrix, true);
     }
 
-    //the front camera displays the mirror image, we should flip it to its original
-    Bitmap flip(Bitmap d)
-    {
+    Bitmap flip(Bitmap d) {
         Matrix m = new Matrix();
         m.preScale(-1, 1);
         Bitmap src = d;
@@ -253,22 +239,10 @@ public final class FaceTrackerActivity extends AppCompatActivity {
                 .setClassificationType(FaceDetector.ALL_CLASSIFICATIONS)
                 .build();
 
-      //  detector.setProcessor(new MultiProcessor.Builder<>(new GraphicFaceTrackerFactory()).build());
-
-        detector.setProcessor(
-                new LargestFaceFocusingProcessor.Builder(detector, new GraphicFaceTracker(mGraphicOverlay)).build());
-
+        //  detector.setProcessor(new MultiProcessor.Builder<>(new GraphicFaceTrackerFactory()).build());
+        detector.setProcessor(new LargestFaceFocusingProcessor.Builder(detector, new GraphicFaceTracker(mGraphicOverlay)).build());
 
         if (!detector.isOperational()) {
-            // Note: The first time that an app using face API is installed on a device, GMS will
-            // download a native library to the device in order to do detection.  Usually this
-            // completes before the app is run for the first time.  But if that download has not yet
-            // completed, then the above call will not detect any faces.
-            //
-            // isOperational() can be used to check if the required native library is currently
-            // available.  The detector will automatically become operational once the library
-            // download completes on device.
-            Log.w(TAG, "Face detector dependencies are not yet available.");
         }
 
         mCameraSource = new CameraSource.Builder(context, detector)
@@ -276,10 +250,12 @@ public final class FaceTrackerActivity extends AppCompatActivity {
                 .setFacing(CameraSource.CAMERA_FACING_FRONT)
                 .setRequestedFps(30.0f)
                 .build();
+
+
     }
 
     /**
-     * Restarts the camera.
+     * Restarts the camera from onResume.
      */
     @Override
     protected void onResume() {
@@ -310,13 +286,8 @@ public final class FaceTrackerActivity extends AppCompatActivity {
     }
 
     /**
-     * Callback for the result from requesting permissions. This method
+     * This callback is for requesting camera permission. This method
      * is invoked for every call on {@link #requestPermissions(String[], int)}.
-     * <p>
-     * <strong>Note:</strong> It is possible that the permissions request interaction
-     * with the user is interrupted. In this case you will receive empty permissions
-     * and results arrays which should be treated as a cancellation.
-     * </p>
      *
      * @param requestCode  The request code passed in {@link #requestPermissions(String[], int)}.
      * @param permissions  The requested permissions. Never null.
@@ -328,14 +299,13 @@ public final class FaceTrackerActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         if (requestCode != RC_HANDLE_CAMERA_PERM) {
-            Log.d(TAG, "Got unexpected permission result: " + requestCode);
+            Log.d(TAG, "Unexpected permission result: " + requestCode);
             super.onRequestPermissionsResult(requestCode, permissions, grantResults);
             return;
         }
 
         if (grantResults.length != 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             Log.d(TAG, "Camera permission granted - initialize the camera source");
-            // we have permission, so create the camerasource
             createCameraSource();
             return;
         }
@@ -355,10 +325,6 @@ public final class FaceTrackerActivity extends AppCompatActivity {
                 .setPositiveButton(R.string.ok, listener)
                 .show();
     }
-
-    //==============================================================================================
-    // Camera Source Preview
-    //==============================================================================================
 
     /**
      * Starts or restarts the camera source, if it exists.  If the camera source doesn't exist yet
@@ -388,7 +354,7 @@ public final class FaceTrackerActivity extends AppCompatActivity {
     }
 
     /**
-     * Factory for creating a face tracker to be associated with a new face.  The multiprocessor
+     * This Factory class for creating a face tracker to be associated with a new face.  The multiprocessor
      * uses this factory to create face trackers as needed -- one for each individual.
      */
     private class GraphicFaceTrackerFactory implements MultiProcessor.Factory<Face> {
@@ -408,11 +374,11 @@ public final class FaceTrackerActivity extends AppCompatActivity {
 
         GraphicFaceTracker(GraphicOverlay overlay) {
             mOverlay = overlay;
-            mFaceGraphic = new FaceGraphic(overlay,FaceTrackerActivity.this);
+            mFaceGraphic = new FaceGraphic(overlay, FaceTrackerActivity.this);
         }
 
         /**
-         * Start tracking the detected face instance within the face overlay.
+         * Here Start tracking the detected face instance within the face overlay.
          */
         @Override
         public void onNewItem(int faceId, Face item) {
@@ -428,12 +394,21 @@ public final class FaceTrackerActivity extends AppCompatActivity {
             mFaceGraphic.updateFace(face);
 
             final boolean isEnable;
-            isEnable = detectionResults.getDetectedItems().size()>0;
+            isEnable = detectionResults.getDetectedItems().size() > 0;
+
 
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    button_capture.setEnabled(isEnable);
+
+                    if (Utility.CLETFT < Utility.FLETFT &&
+                            Utility.CRIGHT > Utility.FRIGHT &&
+                            Utility.CTOP < Utility.FTOP &&
+                            Utility.CBOTTOM > Utility.FBOTTOM) {
+                        button_capture.setEnabled(true);
+                    } else {
+                        button_capture.setEnabled(false);
+                    }
                 }
             });
 
@@ -456,7 +431,6 @@ public final class FaceTrackerActivity extends AppCompatActivity {
         @Override
         public void onDone() {
             mOverlay.remove(mFaceGraphic);
-          //  button_capture.setEnabled(false);
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {

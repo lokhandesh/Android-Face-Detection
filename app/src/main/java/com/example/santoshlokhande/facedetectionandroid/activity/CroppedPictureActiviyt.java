@@ -10,6 +10,11 @@ import android.widget.ImageView;
 
 import com.example.santoshlokhande.facedetectionandroid.R;
 
+/**
+ * {@link CroppedPictureActiviyt}This activity is display capture picture.
+ * <p>
+ * Created By Santosh Lokhande
+ */
 public class CroppedPictureActiviyt extends Activity {
 
     private ImageView iv;
@@ -22,12 +27,11 @@ public class CroppedPictureActiviyt extends Activity {
         setContentView(R.layout.cropped_picture);
 
         iv = (ImageView) findViewById(R.id.imageView1);
-        retake= (Button) findViewById(R.id.retake);
+        retake = (Button) findViewById(R.id.retake);
 
         try {
             bitmapFrontCam = (Bitmap) getIntent()
                     .getParcelableExtra("BitmapImage");
-
 
 
         } catch (Exception e) {

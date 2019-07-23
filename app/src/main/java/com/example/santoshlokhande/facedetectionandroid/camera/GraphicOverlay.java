@@ -5,11 +5,17 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.util.AttributeSet;
 import android.view.View;
+
 import com.google.android.gms.vision.CameraSource;
+
 import java.util.HashSet;
 import java.util.Set;
 
-
+/**
+ * {@link GraphicOverlay}This class is uded to add overlay
+ * <p>
+ * Created By Santosh Lokhande
+ */
 public class GraphicOverlay extends View {
 
 
